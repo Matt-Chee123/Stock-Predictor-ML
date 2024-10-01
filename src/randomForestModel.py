@@ -5,7 +5,16 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import StandardScaler
 
+
 tickers = ["AAPL", "MSFT", "NVDA", "GOOG", "AMZN", "META", "TSM", "AVGO", "TSLA", "TCEHY", "ORCL", "ASML", "SSNLF", "NFLX", "SAP", "AMD", "CRM", "BABA", "ADBE", "CSCO", "QCOM", "TXN", "NOW", "PDD", "INTU", "AMAT", "UBER", "SLA", "SU.PA", "BKNG", "ANET", "MU", "SONY", "ADI", "ADP", "PANW", "LRCX", "KLAC", "MELI", "SHOP", "FI", "INTC", "DELL", "EQIX", "PLTR", "ABNB", "PYPL", "SNPS", "SPOT"]
+stock = input("Enter a stock: ")
+
+indicator = False
+while  indicator == False:
+    for tick in tickers:
+        if stock == tick:
+            
+
 data = pd.read_csv('preprocessed_long_format_stock_data.csv')
 
 data.drop(columns=["Adj_Close","Close","Open","High","Low"],inplace=True)
