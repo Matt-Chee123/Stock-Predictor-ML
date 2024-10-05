@@ -4,60 +4,74 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 from datetime import timedelta
-
+import matplotlib.pyplot as plt
 
 data = yf.download("MSFT", start="2010-01-01", end="2023-01-01")
 
-data = data[['Close']]
-scaler = MinMaxScaler(feature_range=(0, 1))
+data = data[['Close', 'Volume']]
 
-scaled_data = scaler.fit_transform(data)
+scaler_close = MinMaxScaler(feature_range=(0, 1))
+scaler_volume = MinMaxScaler(feature_range=(0, 1))
+
+close_scaled = scaler_close.fit_transform(data[['Close']])
+volume_scaled = scaler_volume.fit_transform(data[['Volume']])
+
+scaled_data = np.hstack((close_scaled, volume_scaled))
+
+train_size = int(len(scaled_data) * 0.8)
+train_data = scaled_data[:train_size]
+test_data = scaled_data[train_size:]
 
 def create_sequences(data, time_step=60):
     X = []
     y = []
     for i in range(time_step, len(data)):
-        X.append(data[i-time_step:i, 0])
+        X.append(data[i-time_step:i, :])
         y.append(data[i, 0])
     return np.array(X), np.array(y)
 
-time_step = 60  # Look back 60 days
-X, y = create_sequences(scaled_data, time_step)
+time_step = 60
 
-X = X.reshape(X.shape[0], X.shape[1], 1)
+X_train, y_train = create_sequences(train_data, time_step)
+
+X_test, y_test = create_sequences(test_data, time_step)
+
 
 model = Sequential()
 
-#layer 2
-model.add(LSTM(units=50, return_sequences=True, input_shape=(X.shape[1], 1)))
+model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
 model.add(Dropout(0.2))
 
-#layer 1
 model.add(LSTM(units=50, return_sequences=False))
 model.add(Dropout(0.2))
 
-# dense layer
 model.add(Dense(units=25))
 model.add(Dropout(0.2))
 
-#output layer
-model.add(Dense(units=1))  # Predicting a single future stock price
+model.add(Dense(units=1))
 
 model.compile(optimizer='adam', loss='mean_squared_error')
 
-model.fit(X, y, epochs=10, batch_size=64)
+model.fit(X_train, y_train, epochs=10, batch_size=64)
 
-test_data = scaled_data[-time_step:]
-test_data = np.array(test_data).reshape(1, -1, 1)
+predictions = model.predict(X_test)
 
+predicted_prices = scaler_close.inverse_transform(np.concatenate([predictions, np.zeros((predictions.shape[0], 1))], axis=1))[:, 0]
+actual_prices = scaler_close.inverse_transform(np.concatenate([y_test.reshape(-1, 1), np.zeros((y_test.shape[0], 1))], axis=1))[:, 0]
 
-predicted_price = model.predict(test_data)
+mse = mean_squared_error(actual_prices, predicted_prices)
+mae = mean_absolute_error(actual_prices, predicted_prices)
 
-predicted_price_original_scale = scaler.inverse_transform(predicted_price)
+print(f"Mean Squared Error (MSE): {mse}")
+print(f"Mean Absolute Error (MAE): {mae}")
 
-last_date = data.index[-1]
-
-next_date = last_date + timedelta(days=1)
-
-print(f"Predicted future stock price for {next_date.date()}: {predicted_price_original_scale[0][0]}")
+plt.figure(figsize=(10, 6))
+plt.plot(actual_prices, color='blue', label='Actual Stock Price')
+plt.plot(predicted_prices, color='red', label='Predicted Stock Price')
+plt.title('Microsoft Stock Price Prediction')
+plt.xlabel('Days')
+plt.ylabel('Stock Price')
+plt.legend()
+plt.show()
