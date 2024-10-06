@@ -41,20 +41,20 @@ X_test, y_test = create_sequences(test_data, time_step)
 
 model = Sequential()
 
-model.add(LSTM(units=50, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
-model.add(Dropout(0.2))
+model.add(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
+model.add(Dropout(0.3))
 
-model.add(LSTM(units=50, return_sequences=False))
-model.add(Dropout(0.2))
+model.add(LSTM(units=100, return_sequences=False))
+model.add(Dropout(0.3))
 
-model.add(Dense(units=25))
-model.add(Dropout(0.2))
+model.add(Dense(units=50))
+model.add(Dropout(0.3))
 
 model.add(Dense(units=1))
 
 model.compile(optimizer='adam', loss='mean_squared_error')
 
-model.fit(X_train, y_train, epochs=10, batch_size=64)
+model.fit(X_train, y_train, epochs=20, batch_size=64)
 
 predictions = model.predict(X_test)
 
