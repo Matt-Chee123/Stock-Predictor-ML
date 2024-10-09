@@ -52,7 +52,12 @@ model.add(Dense(units=1))
 
 model.compile(optimizer='adam', loss='mean_squared_error')
 
-model.fit(X_train, y_train, epochs=100, batch_size=32)
+history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2)
+
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.legend()
+plt.show()
 
 predicted_prices = model.predict(X_test)
 
