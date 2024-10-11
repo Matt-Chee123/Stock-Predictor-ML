@@ -19,13 +19,13 @@ for lag in [1, 2, 3]:  # You can add more lag values
 
 # Drop rows with NaN values due to lagging
 data = data.dropna()
-
+print(data)
 # Select relevant features
-data = data[['Close', 'Volume', 'Close_Lag_1', 'Volume_Lag_1',
+data = data[['Close', 'Volume','Adj Close', 'Close_Lag_1', 'Volume_Lag_1',
              'Close_Lag_2', 'Volume_Lag_2',
              'Close_Lag_3', 'Volume_Lag_3']]
 
-close_columns = ['Close', 'Close_Lag_1', 'Close_Lag_2', 'Close_Lag_3']
+close_columns = ['Close', 'Close_Lag_1', 'Close_Lag_2', 'Close_Lag_3','Adj Close']
 volume_columns = ['Volume', 'Volume_Lag_1', 'Volume_Lag_2', 'Volume_Lag_3']
 
 close_data = data[close_columns]
