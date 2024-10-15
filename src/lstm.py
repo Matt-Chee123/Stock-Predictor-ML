@@ -8,51 +8,50 @@ import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 
+# Load data
 data = yf.download("MSFT", start="2010-01-01", end="2023-01-01")
 
-for lag in [1, 2, 3]:  # You can add more lag values
+# Create lag features
+for lag in [1, 2, 3]:
     data[f'Close_Lag_{lag}'] = data['Close'].shift(lag)
     data[f'Volume_Lag_{lag}'] = data['Volume'].shift(lag)
 
 data = data.dropna()
 
-data = data[['Close', 'Volume','Adj Close', 'Close_Lag_1', 'Volume_Lag_1',
+# Select relevant columns
+data = data[['Close', 'Volume', 'Adj Close', 'Close_Lag_1', 'Volume_Lag_1',
              'Close_Lag_2', 'Volume_Lag_2',
              'Close_Lag_3', 'Volume_Lag_3']]
 
-close_columns = ['Close', 'Close_Lag_1', 'Close_Lag_2', 'Close_Lag_3','Adj Close']
-volume_columns = ['Volume', 'Volume_Lag_1', 'Volume_Lag_2', 'Volume_Lag_3']
-
+# Split into train and test
 train_size = int(len(data) * 0.8)
 train_data = data.iloc[:train_size]
 test_data = data.iloc[train_size:]
 
+# Scale data
 close_scaler = MinMaxScaler()
 volume_scaler = MinMaxScaler()
 
-scaled_close_train = close_scaler.fit_transform(train_data[close_columns])
-scaled_volume_train = volume_scaler.fit_transform(train_data[volume_columns])
+scaled_close_train = close_scaler.fit_transform(train_data[['Close', 'Adj Close']])
+scaled_volume_train = volume_scaler.fit_transform(train_data[['Volume', 'Volume_Lag_1', 'Volume_Lag_2', 'Volume_Lag_3']])
 
-scaled_close_test = close_scaler.transform(test_data[close_columns])
-scaled_volume_test = volume_scaler.transform(test_data[volume_columns])
+scaled_close_test = close_scaler.transform(test_data[['Close', 'Adj Close']])
+scaled_volume_test = volume_scaler.transform(test_data[['Volume', 'Volume_Lag_1', 'Volume_Lag_2', 'Volume_Lag_3']])
 
-scaled_close_train_df = pd.DataFrame(scaled_close_train, columns=close_columns)
-scaled_volume_train_df = pd.DataFrame(scaled_volume_train, columns=volume_columns)
+scaled_train_data = pd.DataFrame(np.hstack((scaled_close_train, scaled_volume_train)),
+                                 columns=['Close', 'Adj Close', 'Volume', 'Volume_Lag_1', 'Volume_Lag_2', 'Volume_Lag_3'])
 
-scaled_close_test_df = pd.DataFrame(scaled_close_test, columns=close_columns)
-scaled_volume_test_df = pd.DataFrame(scaled_volume_test, columns=volume_columns)
-
-scaled_train_data = pd.concat([scaled_close_train_df, scaled_volume_train_df], axis=1)
-scaled_test_data = pd.concat([scaled_close_test_df, scaled_volume_test_df], axis=1)
+scaled_test_data = pd.DataFrame(np.hstack((scaled_close_test, scaled_volume_test)),
+                                columns=['Close', 'Adj Close', 'Volume', 'Volume_Lag_1', 'Volume_Lag_2', 'Volume_Lag_3'])
 
 def create_sequences(data, time_step=60):
-    X = []
-    y = []
+    X, y = [], []
     for i in range(time_step, len(data)):
         X.append(data[i-time_step:i, :])
-        y.append(data[i, 0])
+        y.append(data[i, 0])  # Close price
     return np.array(X), np.array(y)
 
+# Prepare data for LSTM
 train_data_np = scaled_train_data.values
 test_data_np = scaled_test_data.values
 
@@ -61,46 +60,60 @@ time_step = 60
 X_train, y_train = create_sequences(train_data_np, time_step)
 X_test, y_test = create_sequences(test_data_np, time_step)
 
+# Set random seed for reproducibility
 tf.random.set_seed(40)
 
+# Define the model
 model = Sequential()
-
 model.add(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
 model.add(Dropout(0.3))
-
 model.add(LSTM(units=100, return_sequences=False))
 model.add(Dropout(0.3))
-
 model.add(Dense(units=50))
 model.add(Dropout(0.3))
-
 model.add(Dense(units=1))
 
+# Compile the model
 model.compile(optimizer='adam', loss='mean_squared_error')
 
-model.fit(X_train, y_train, epochs=20, batch_size=64)
+# Fit the model with validation data
+history = model.fit(X_train, y_train, epochs=100, batch_size=64, validation_split=0.2)
 
+# Predictions
 predictions = model.predict(X_test)
 
+# Inverse transform predictions
 predicted_prices = close_scaler.inverse_transform(
-    np.concatenate([predictions, np.zeros((predictions.shape[0], len(close_columns) - 1))], axis=1)
+    np.concatenate([predictions, np.zeros((predictions.shape[0], len(scaled_close_train[0]) - 1))], axis=1)
 )[:, 0]
 
 actual_prices = close_scaler.inverse_transform(
-    np.concatenate([y_test.reshape(-1, 1), np.zeros((y_test.shape[0], len(close_columns) - 1))], axis=1)
+    np.concatenate([y_test.reshape(-1, 1), np.zeros((y_test.shape[0], len(scaled_close_train[0]) - 1))], axis=1)
 )[:, 0]
 
+# Calculate metrics
 mse = mean_squared_error(actual_prices, predicted_prices)
 mae = mean_absolute_error(actual_prices, predicted_prices)
 
 print(f"Mean Squared Error (MSE): {mse}")
 print(f"Mean Absolute Error (MAE): {mae}")
 
+# Plot actual vs predicted prices
 plt.figure(figsize=(10, 6))
 plt.plot(actual_prices, color='blue', label='Actual Stock Price')
 plt.plot(predicted_prices, color='red', label='Predicted Stock Price')
 plt.title('Microsoft Stock Price Prediction')
 plt.xlabel('Days')
 plt.ylabel('Stock Price')
+plt.legend()
+plt.show()
+
+# Plot training & validation loss values
+plt.figure(figsize=(12, 6))
+plt.bar(range(len(history.history['loss'])), history.history['loss'], label='Training Loss', color='blue', alpha=0.6)
+plt.bar(range(len(history.history['val_loss'])), history.history['val_loss'], label='Validation Loss', color='orange', alpha=0.6)
+plt.title('Training and Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
 plt.legend()
 plt.show()
