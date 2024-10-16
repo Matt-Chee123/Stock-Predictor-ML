@@ -8,27 +8,22 @@ import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 import matplotlib.pyplot as plt
 
-# Load data
 data = yf.download("MSFT", start="2010-01-01", end="2023-01-01")
 
-# Create lag features
 for lag in [1, 2, 3]:
     data[f'Close_Lag_{lag}'] = data['Close'].shift(lag)
     data[f'Volume_Lag_{lag}'] = data['Volume'].shift(lag)
 
 data = data.dropna()
 
-# Select relevant columns
 data = data[['Close', 'Volume', 'Adj Close', 'Close_Lag_1', 'Volume_Lag_1',
              'Close_Lag_2', 'Volume_Lag_2',
              'Close_Lag_3', 'Volume_Lag_3']]
 
-# Split into train and test
 train_size = int(len(data) * 0.8)
 train_data = data.iloc[:train_size]
 test_data = data.iloc[train_size:]
 
-# Scale data
 close_scaler = MinMaxScaler()
 volume_scaler = MinMaxScaler()
 
@@ -60,10 +55,8 @@ time_step = 60
 X_train, y_train = create_sequences(train_data_np, time_step)
 X_test, y_test = create_sequences(test_data_np, time_step)
 
-# Set random seed for reproducibility
 tf.random.set_seed(40)
 
-# Define the model
 model = Sequential()
 model.add(LSTM(units=100, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2])))
 model.add(Dropout(0.3))
@@ -73,11 +66,9 @@ model.add(Dense(units=50))
 model.add(Dropout(0.3))
 model.add(Dense(units=1))
 
-# Compile the model
 model.compile(optimizer='adam', loss='mean_squared_error')
 
-# Fit the model with validation data
-history = model.fit(X_train, y_train, epochs=100, batch_size=64, validation_split=0.2)
+history = model.fit(X_train, y_train, epochs=40, batch_size=64, validation_split=0.2)
 
 # Predictions
 predictions = model.predict(X_test)
@@ -91,14 +82,12 @@ actual_prices = close_scaler.inverse_transform(
     np.concatenate([y_test.reshape(-1, 1), np.zeros((y_test.shape[0], len(scaled_close_train[0]) - 1))], axis=1)
 )[:, 0]
 
-# Calculate metrics
 mse = mean_squared_error(actual_prices, predicted_prices)
 mae = mean_absolute_error(actual_prices, predicted_prices)
 
 print(f"Mean Squared Error (MSE): {mse}")
 print(f"Mean Absolute Error (MAE): {mae}")
 
-# Plot actual vs predicted prices
 plt.figure(figsize=(10, 6))
 plt.plot(actual_prices, color='blue', label='Actual Stock Price')
 plt.plot(predicted_prices, color='red', label='Predicted Stock Price')
@@ -108,7 +97,6 @@ plt.ylabel('Stock Price')
 plt.legend()
 plt.show()
 
-# Plot training & validation loss values
 plt.figure(figsize=(12, 6))
 plt.bar(range(len(history.history['loss'])), history.history['loss'], label='Training Loss', color='blue', alpha=0.6)
 plt.bar(range(len(history.history['val_loss'])), history.history['val_loss'], label='Validation Loss', color='orange', alpha=0.6)
