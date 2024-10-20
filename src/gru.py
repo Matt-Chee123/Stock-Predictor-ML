@@ -13,5 +13,8 @@ start_date = "2010-01-01"
 end_date = "2023-10-01"
 
 data = yf.download(ticker, start=start_date, end=end_date)
-missing_values = data.isnull().sum()
-print(missing_values)
+
+data = data[['Close']]
+scaler = MinMaxScaler(feature_range=(0, 1))
+scaled_data = scaler.fit_transform(data)
+print(scaled_data)
