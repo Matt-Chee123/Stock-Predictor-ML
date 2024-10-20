@@ -17,4 +17,8 @@ data = yf.download(ticker, start=start_date, end=end_date)
 data = data[['Close']]
 scaler = MinMaxScaler(feature_range=(0, 1))
 scaled_data = scaler.fit_transform(data)
-print(scaled_data)
+
+train_size = int(len(scaled_data) * 0.8)
+train_data = scaled_data[:train_size]
+test_data = scaled_data[train_size:]
+print(len(train_data),len(test_data))
