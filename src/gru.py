@@ -22,3 +22,11 @@ train_size = int(len(scaled_data) * 0.8)
 train_data = scaled_data[:train_size]
 test_data = scaled_data[train_size:]
 print(len(train_data),len(test_data))
+
+def create_sequences(data, time_step=60):
+    X = []
+    y = []
+    for i in range(time_step, len(data)):
+        X.append(data[i-time_step:i, :])
+        y.append(data[i, 0])
+    return np.array(X), np.array(y)
