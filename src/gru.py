@@ -30,3 +30,7 @@ def create_sequences(data, time_step=60):
         X.append(data[i-time_step:i, :])
         y.append(data[i, 0])
     return np.array(X), np.array(y)
+
+time_step = 60
+X_train, y_train = create_sequences(train_data, time_step)
+X_test, y_test = create_sequences(test_data, time_step)
