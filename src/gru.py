@@ -4,7 +4,6 @@ import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import GRU, Dense, Dropout
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import BatchNormalization
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error
@@ -40,26 +39,23 @@ X_test, y_test = create_sequences(test_data, time_step)
 X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
 X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
 
-early_stopping = EarlyStopping(
-    monitor='val_loss',
-    patience=10,
-    restore_best_weights=True
-)
-
 model = Sequential([
-    GRU(units=50, return_sequences=True, input_shape=(time_step, 1)),
+    GRU(units=100, return_sequences=True, input_shape=(time_step, 1)),
     Dropout(0.2),
+
     GRU(units=50, return_sequences=True),
     Dropout(0.2),
+
     GRU(units=50, return_sequences=False),
     Dropout(0.2),
+
+
     Dense(units=1)
 ])
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001), loss='mean_squared_error')
 
 # Train the model as before
-history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_test, y_test),callbacks=[early_stopping]   # Add the early stopping callback here
-)
+history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_test, y_test))
 
 train_predictions = model.predict(X_train)
 test_predictions = model.predict(X_test)
